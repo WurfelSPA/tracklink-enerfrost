@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 /**
- * download-weekly.js — ENERFROST
+ * download-weekly.js — ENERFROST (Excesos de velocidad >120 km/h)
  * Descarga el reporte de excesos de velocidad de TrackGTS
  * para un rango exacto Lunes–Domingo usando las variables de entorno:
- *   TL_START     — "YYYY/MM/DD 00:00:00"
- *   TL_END       — "YYYY/MM/DD 23:59:59"
+ *   TL_START     — "YYYY/MM/DD 04:00:00" (convención +4h, ver README)
+ *   TL_END       — "YYYY/MM/DD 03:59:59" (día siguiente)
  *   TL_UNIT_IDS  — lista de unitIds de ENERFROST separados por coma
  *
- * Clon de download-weekly.js (tracklink-santamarta), parametrizado por
- * cliente vía TL_UNIT_IDS en vez de hardcodear los unitIds en el código.
+ * IMPORTANTE: a diferencia de Santa Marta, esta llamada NO usa un reportName
+ * ni un tipo de reporte genéricos. TrackGTS exige que reportName, parameters,
+ * speed y el segmento de tipo de reporte en la URL coincidan exactamente con
+ * la definición del reporte "Excesos 120 Enerfrost semanal" ya existente en
+ * la cuenta de ENERFROST (favorito creado por Nelson, reportTypeId 24) — de
+ * lo contrario el backend de TrackGTS devuelve 500 Internal Server Error.
+ * Estos valores NO se guardan ni se modifican desde este script (nunca se
+ * llama a "Guardar"), solo se replican para poder descargar el reporte de
+ * forma automática. Confirmado funcionando: 2026-08-01 (payload capturado
+ * en vivo interceptando el fetch real de la UI de TrackGTS).
  */
 'use strict';
 
@@ -30,7 +38,7 @@ async function main() {
     throw new Error('Falta TL_UNIT_IDS — lista de unitIds de ENERFROST. Ver README.md.');
   }
 
-  console.log(`=== Download Weekly ENERFROST: ${TL_START} → ${TL_END} ===`);
+  console.log(`=== Download Weekly ENERFROST (Excesos 120): ${TL_START} → ${TL_END} ===`);
   console.log(`Unidades incluidas: ${TL_UNIT_IDS}`);
 
   const browser = await puppeteer.launch({
@@ -42,6 +50,7 @@ async function main() {
     const page = await browser.newPage();
     page.setDefaultTimeout(60_000);
 
+    // ── 1. Login ──────────────────────────────────────────────────────────────
     const loginUrl = `https://${TL_DOMAIN}.trackgts.com/admin/login.html`;
     console.log(`[1] Login en: ${loginUrl}`);
     await page.goto(loginUrl, { waitUntil: 'networkidle0', timeout: 60_000 });
@@ -77,6 +86,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 15_000));
     console.log(`[2] URL actual: ${page.url()}`);
 
+    // ── 2. Descargar reporte para el rango exacto ─────────────────────────────
     console.log(`[3] Descargando: ${TL_START} → ${TL_END}`);
     const result = await page.evaluate(async (startDate, endDate, unitIds) => {
       const h    = JSONUSER.hash;
@@ -84,16 +94,16 @@ async function main() {
         startDate,
         endDate,
         unitIds,
-        reportName:          'INFORME EXCESOS DE VELOCIDAD',
-        parameters:          'undefined',
+        reportName:          'Excesos 120 Enerfrost semanal',
+        parameters:          '  120  km/h',
         userTimeZone:        -4,
         userfuelMeasure:     0,
         userMeasureDistance: 0,
-        speed:               NaN,
+        speed:               120,
         language:            0,
       });
       const res = await fetch(
-        `https://www.trackgts.com:82/api/reportTravel/GetSpeedingReportByUnitsPagesZip/25/${h}`,
+        `https://www.trackgts.com:82/api/reportTravel/GetSpeedingReportByUnitsPagesZip/24/${h}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json;charset=UTF-8' }, body }
       );
       const json = await res.json();
@@ -104,6 +114,7 @@ async function main() {
 
     if (result.error) throw new Error(result.error);
 
+    // ── 3. Extraer .xlsx del ZIP ───────────────────────────────────────────────
     const zip  = new AdmZip(Buffer.from(result.fileContents, 'base64'));
     const xlsx = zip.getEntries().find(e => e.entryName.toLowerCase().endsWith('.xlsx'));
     if (!xlsx) throw new Error(`Sin .xlsx en ZIP. Entradas: ${zip.getEntries().map(e => e.entryName).join(', ')}`);
