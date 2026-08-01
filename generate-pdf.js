@@ -38,7 +38,7 @@ const path = require('path');
 const CONFIG = {
   siteName:       'ENERFROST',
   footerLabel:    'ENERFROST',
-  logoUrl:        'https://raw.githubusercontent.com/WurfelSPA/tracklink-enerfrost/main/logo%20Enerfrost.png',
+  logoUrl:        'https://raw.githubusercontent.com/WurfelSPA/tracklink-enerfrost/main/logo-enerfrost.png',
   speedThreshold: 120,  // km/h — filas por debajo se descartan (ver nota arriba)
   colorDark:      '#0e2f2a', // teal muy oscuro — portada, KPI, badges (derivado del logo)
   colorDarker:    '#071a17', // casi negro con matiz teal — degradé de portada
