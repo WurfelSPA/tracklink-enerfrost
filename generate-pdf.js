@@ -5,11 +5,12 @@
  * Clon parametrizado de generate-pdf.js (tracklink-santamarta) para el
  * "Informe de excesos de velocidad sobre 120 km/h" de ENERFROST.
  *
- * ⚠ DISEÑO PENDIENTE DE CONFIRMACIÓN: ENERFROST no envió una muestra de
- * referencia (a diferencia de KADEL). Esta paleta (teal/frost) y el diseño
- * de tabla con columna "Conductor" son un punto de partida razonable
- * heredado de Santa Marta — hay que validarlo con el cliente antes de
- * producción y ajustar CONFIG / la tabla de la página 3 si corresponde.
+ * DISEÑO: paleta derivada del logo real de ENERFROST (logo Enerfrost.png,
+ * teal #17B899 + gris carbón #54565A) — reemplaza el placeholder inicial.
+ * El layout de tabla con columna "Conductor" sigue siendo el heredado de
+ * Santa Marta (el Excel de ENERFROST sí trae esa columna, a diferencia de
+ * KADEL) — validar con el cliente antes de producción si el contenido
+ * textual/estructura también les sirve, o solo la paleta.
  *
  * Diferencias vs. el original de Santa Marta:
  *   - CONFIG.siteName / CONFIG.footerLabel → "ENERFROST"
@@ -37,14 +38,14 @@ const path = require('path');
 const CONFIG = {
   siteName:       'ENERFROST',
   footerLabel:    'ENERFROST',
-  logoUrl:        null, // TODO: reemplazar por logo real una vez confirmado con el cliente
+  logoUrl:        'https://raw.githubusercontent.com/WurfelSPA/tracklink-enerfrost/main/logo%20Enerfrost.png',
   speedThreshold: 120,  // km/h — filas por debajo se descartan (ver nota arriba)
-  colorDark:      '#0f3d3e', // teal oscuro — portada, KPI, badges (placeholder, confirmar con cliente)
-  colorDarker:    '#082625', // teal más oscuro — degradé de portada
-  colorMid:       '#155e63', // teal medio — degradé de portada
-  colorRankFrom:  '#0f3d3e', // barras — extremo oscuro del degradé por ranking
-  colorRankTo:    '#7dd3c9', // barras — extremo claro (mint) del degradé por ranking
-  colorAccent:    '#0f3d3e', // línea de pico / badge en gráficos verticales
+  colorDark:      '#0e2f2a', // teal muy oscuro — portada, KPI, badges (derivado del logo)
+  colorDarker:    '#071a17', // casi negro con matiz teal — degradé de portada
+  colorMid:       '#12554a', // teal medio-oscuro — degradé de portada
+  colorRankFrom:  '#0e2f2a', // barras — extremo oscuro del degradé por ranking
+  colorRankTo:    '#17B899', // barras — extremo claro: teal de marca (logo)
+  colorAccent:    '#17B899', // línea de pico / badge en gráficos verticales — teal de marca
 };
 
 const EXCEL_FILE = path.join(process.cwd(), 'INFORME EXCESOS DE VELOCIDAD.xlsx');

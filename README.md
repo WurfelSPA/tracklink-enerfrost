@@ -9,21 +9,24 @@ y lo envía por email a las 07:00 CLT.
 
 ## Estado (2026-08-01)
 
-- [ ] **Diseño sin confirmar** — ENERFROST no envió una muestra de referencia
-      (a diferencia de KADEL). `generate-pdf.js` usa una paleta teal/frost
-      provisoria y el layout de 3 columnas (Conductor/Unidad/Vel. Máx.)
-      heredado de Santa Marta — ajustar cuando el cliente confirme formato.
+- [x] **Diseño** — paleta definitiva derivada del logo real de ENERFROST
+      (`logo Enerfrost.png`, teal #17B899 + carbón), usado en la portada del PDF.
+      Layout de tabla con 3 columnas (Conductor/Unidad/Vel. Máx.) heredado de
+      Santa Marta — pendiente que el cliente confirme si el contenido/estructura
+      también le sirve, o solo la paleta.
 - [x] `generate-pdf.js` — clon parametrizado, umbral 120 km/h
-- [x] `download-weekly.js` — clon parametrizado, unitIds vía secret `TL_UNIT_IDS`
-- [x] `weekly-report.yml` — mismo horario que Santa Marta (lunes 01:00 CLT)
-- [x] Listado completo de unitIds resuelto vía HealthCheck_171 (ver tabla abajo)
-- [x] Secrets `TL_USER` / `TL_PASSWORD` / `TL_DOMAIN` — mismos que Santa Marta
+- [x] `download-weekly.js` — usa el reporte favorito "Excesos 120 Enerfrost semanal" (reportTypeId 24) ya existente en la cuenta de ENERFROST
+- [x] `download-weekly-idle.js` — Ralentí excesivo vía `POST /api/historyNewReports/{hash}` (reportType 14), arma el .xlsx localmente
+- [x] `weekly-report.yml` — mismo horario que Santa Marta (lunes 01:00 CLT), descarga excesos + ralentí
+- [x] Listado completo de unitIds resuelto vía HealthCheck_171 (ver tabla abajo) y cargado como secret
+- [x] Secrets `TL_USER` / `TL_PASSWORD` / `TL_DOMAIN` / `TL_UNIT_IDS` — cargados
 - [x] Workflow n8n de envío creado (Lunes 07:00 CLT) — [ZXkDmFQlCrGzMGMZ](https://wurfel.app.n8n.cloud/workflow/ZXkDmFQlCrGzMGMZ), inactivo, solo TEST a wurfel.cl@gmail.com
-- [x] Estructura del "Reporte Relentí" identificada (hojas Detalle / Resumen Diario / Resumen Total)
-- [ ] **PENDIENTE: cargar el secret `TL_UNIT_IDS`** en GitHub (Settings → Secrets → Actions) con el valor de la sección siguiente
-- [ ] Endpoint de API del Reporte Relentí (pendiente captura de Network tab)
-- [ ] Prueba end-to-end antes de producción
-- [ ] Activar workflow n8n y GitHub Action una vez validado
+- [x] Estructura del "Reporte Relentí" identificada y automatizada (hojas Detalle / Resumen Diario / Resumen Total)
+- [x] Pipeline probado end-to-end: corrida exitosa 2026-08-01, 2 excesos + 60 eventos de ralentí detectados para el período 20-26/07
+- [x] Dashboard (`index.html`) publicado en GitHub Pages: https://wurfelspa.github.io/tracklink-enerfrost/
+- [ ] Ajustar filtro por defecto del dashboard ("Últimos 7 días" se calcula contra hoy, no contra el período real del reporte — puede mostrar "sin datos" con datos reales fuera de esa ventana)
+- [ ] Limpiar encoding (mojibake) en columnas Dirección/Posición del tab "Detalle de Eventos"
+- [ ] **Activar envío real en n8n — lo hace Alex personalmente, NO automatizar**
 
 ## Mapeo de unidades (HealthCheck_171, 2026-08-01)
 
