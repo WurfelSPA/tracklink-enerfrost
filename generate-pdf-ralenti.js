@@ -368,7 +368,7 @@ function generateHTML(s) {
   const criticalDayText  = criticalDayNames.length >= 2 ? `${criticalDayNames[0]} y ${criticalDayNames[1]}` : (criticalDayNames[0] || '—');
 
   const eyebrow = CONFIG.logoUrl
-    ? `<img src="${CONFIG.logoUrl}" style="height:140px;width:auto;object-fit:contain;" alt="">`
+    ? `<img src="${CONFIG.logoUrl}" style="height:70px;width:auto;object-fit:contain;" alt="">`
     : `<div style="font-size:15px;font-weight:800;letter-spacing:.35em;color:#1a202c;">${escapeHtml(CONFIG.siteName)}</div>`;
 
   return `<!DOCTYPE html>
