@@ -13,12 +13,13 @@
 #   4. Hace commit de ambos Excel + PDF al repo (n8n los descarga desde acá)
 #
 # Secrets requeridos (Settings → Secrets → Actions):
-#   TL_USER      → usuario TrackGTS (mismo que Santa Marta: amelendez)
-#   TL_PASSWORD  → contraseña TrackGTS
-#   TL_DOMAIN    → subdominio (tlchile)
-#   TL_UNIT_IDS  → unitIds de ENERFROST separados por coma
-#                  ⚠ PENDIENTE: completar este secret antes de activar el
-#                  workflow — ver README.md para el estado del mapeo.
+#   TL_USER           → usuario TrackGTS (mismo que Santa Marta: amelendez)
+#   TL_PASSWORD       → contraseña TrackGTS
+#   TL_DOMAIN         → subdominio (tlchile)
+#   TL_UNIT_IDS       → unitIds de ENERFROST (143, flota completa) — solo
+#                        para el informe de excesos de velocidad
+#   TL_UNIT_IDS_IDLE  → unitIds de ENERFROST (22, subflota con placa) — solo
+#                        para el informe de ralentí excesivo. Ver README.md.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: Descarga y Reporte Semanal
@@ -123,12 +124,12 @@ jobs:
 
       - name: Descargar semana objetivo (ralentí excesivo)
         env:
-          TL_USER:     ${{ secrets.TL_USER }}
-          TL_PASSWORD: ${{ secrets.TL_PASSWORD }}
-          TL_DOMAIN:   ${{ secrets.TL_DOMAIN }}
-          TL_UNIT_IDS: ${{ secrets.TL_UNIT_IDS }}
-          TL_START:    ${{ steps.dates.outputs.tl_start }}
-          TL_END:      ${{ steps.dates.outputs.tl_end }}
+          TL_USER:          ${{ secrets.TL_USER }}
+          TL_PASSWORD:      ${{ secrets.TL_PASSWORD }}
+          TL_DOMAIN:        ${{ secrets.TL_DOMAIN }}
+          TL_UNIT_IDS_IDLE: ${{ secrets.TL_UNIT_IDS_IDLE }}
+          TL_START:         ${{ steps.dates.outputs.tl_start }}
+          TL_END:           ${{ steps.dates.outputs.tl_end }}
         run: node download-weekly-idle.js && mv latest-idle.xlsx "RALENTI EXCESIVO.xlsx"
         timeout-minutes: 8
 

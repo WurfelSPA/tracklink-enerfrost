@@ -30,9 +30,21 @@
  * según la estructura ya identificada en README.md.
  *
  * Variables de entorno:
- *   TL_START     — "YYYY/MM/DD 04:00:00" (convención +4h, ver README)
- *   TL_END       — "YYYY/MM/DD 03:59:59" (día siguiente)
- *   TL_UNIT_IDS  — lista de unitIds de ENERFROST separados por coma
+ *   TL_START          — "YYYY/MM/DD 04:00:00" (convención +4h, ver README)
+ *   TL_END            — "YYYY/MM/DD 03:59:59" (día siguiente)
+ *   TL_UNIT_IDS_IDLE  — unitIds de las 22 unidades de ENERFROST que entran en
+ *                        este informe (subconjunto de flota con placa, NO las
+ *                        143 unidades de TL_UNIT_IDS que usa el informe de
+ *                        excesos de velocidad — son reportes con alcance
+ *                        distinto, confirmado por el cliente 2026-08-07:
+ *                        el de ralentí solo debe considerar estas 22).
+ *
+ * Nota: se filtran localmente los eventos recibidos para quedarnos solo con
+ * unitId dentro de TL_UNIT_IDS_IDLE, como red de seguridad — la API de
+ * TrackGTS no garantiza respetar el filtro de unitIds enviado en el request
+ * para este reportType (14); se confirmó en vivo que devolvía eventos de
+ * otras unidades de ENERFROST fuera del alcance de este informe (ver
+ * incidente 2026-08-07: EN_0304/EN_0312/EN_0356 no debían aparecer).
  */
 'use strict';
 
@@ -63,7 +75,7 @@ function fmtDuration(ms) {
 }
 
 async function main() {
-  const { TL_USER, TL_PASSWORD, TL_DOMAIN, TL_START, TL_END, TL_UNIT_IDS } = process.env;
+  const { TL_USER, TL_PASSWORD, TL_DOMAIN, TL_START, TL_END, TL_UNIT_IDS_IDLE } = process.env;
 
   if (!TL_USER || !TL_PASSWORD || !TL_DOMAIN) {
     throw new Error('Faltan variables de entorno: TL_USER, TL_PASSWORD, TL_DOMAIN');
@@ -71,12 +83,14 @@ async function main() {
   if (!TL_START || !TL_END) {
     throw new Error('Faltan variables TL_START y TL_END (calculadas por el step anterior)');
   }
-  if (!TL_UNIT_IDS) {
-    throw new Error('Falta TL_UNIT_IDS — lista de unitIds de ENERFROST. Ver README.md.');
+  if (!TL_UNIT_IDS_IDLE) {
+    throw new Error('Falta TL_UNIT_IDS_IDLE — las 22 unitIds de ENERFROST para este informe. Ver README.md.');
   }
 
+  const allowedUnitIds = new Set(TL_UNIT_IDS_IDLE.split(',').map(s => s.trim()).filter(Boolean));
+
   console.log(`=== Download Weekly ENERFROST (Ralentí excesivo): ${TL_START} → ${TL_END} ===`);
-  console.log(`Unidades incluidas: ${TL_UNIT_IDS}`);
+  console.log(`Unidades incluidas (${allowedUnitIds.size}): ${TL_UNIT_IDS_IDLE}`);
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -141,12 +155,19 @@ async function main() {
         return { error: `idResult=${json.idResult} (sesión expirada o sin datos)` };
       }
       return { rows: json };
-    }, TL_START, TL_END, TL_UNIT_IDS);
+    }, TL_START, TL_END, TL_UNIT_IDS_IDLE);
 
     if (result.error) throw new Error(result.error);
 
-    const rawRows = (result.rows || []).filter(r => r.idxDate && r.nextDate);
-    console.log(`[4] Eventos de ralentí recibidos: ${rawRows.length}`);
+    const receivedRows = (result.rows || []).filter(r => r.idxDate && r.nextDate);
+    const rawRows = receivedRows.filter(r => allowedUnitIds.has(String(r.unitId)));
+    const descartados = receivedRows.length - rawRows.length;
+    console.log(`[4] Eventos de ralentí recibidos: ${receivedRows.length}`);
+    if (descartados > 0) {
+      const unidadesFuera = [...new Set(receivedRows.filter(r => !allowedUnitIds.has(String(r.unitId))).map(r => `${r.unitAlias} (${r.unitId})`))];
+      console.log(`[4] ⚠ Descartados ${descartados} eventos fuera de las 22 unidades autorizadas: ${unidadesFuera.join(', ')}`);
+    }
+    console.log(`[4] Eventos de ralentí válidos para el informe: ${rawRows.length}`);
 
     // ── 3. Armar hoja Detalle ───────────────────────────────────────────────────
     const detalle = rawRows.map(r => {

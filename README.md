@@ -54,12 +54,67 @@ este repo todavía.
 
 ## Secrets requeridos (Settings → Secrets → Actions)
 
-| Secret        | Descripción                                                  |
-|---------------|---------------------------------------------------------------|
-| `TL_USER`     | Usuario TrackGTS                                              |
-| `TL_PASSWORD` | Contraseña TrackGTS                                            |
-| `TL_DOMAIN`   | Subdominio (ej. `tlchile`)                                     |
-| `TL_UNIT_IDS` | unitIds de ENERFROST separados por coma                       |
+| Secret             | Descripción                                                                |
+|--------------------|------------------------------------------------------------------------------|
+| `TL_USER`          | Usuario TrackGTS                                                            |
+| `TL_PASSWORD`      | Contraseña TrackGTS                                                        |
+| `TL_DOMAIN`        | Subdominio (ej. `tlchile`)                                                 |
+| `TL_UNIT_IDS`      | unitIds de ENERFROST, flota completa (143) — solo excesos de velocidad     |
+| `TL_UNIT_IDS_IDLE` | unitIds de ENERFROST, subflota con placa (22) — solo ralentí excesivo      |
+
+### ⚠ Incidente 2026-08-07: informe de ralentí con unidades ajenas
+
+El cliente reportó que "Informe de ralentí excesivo" incluía unidades y
+totales que no coincidían con el reporte favorito de TrackGTS ("Ralentí
+semanal Enerfrost"), el cual solo debe considerar 22 unidades (la subflota
+con patente: FORD RANGER, MAXUS, MITSUBISHI, NISSAN, PEUGEOT). El script
+usaba el mismo secret `TL_UNIT_IDS` (143 unidades, incluye toda la flota con
+tracker asignado a sitios SQM/faenas) que el informe de excesos de
+velocidad — por eso aparecían unidades como `EN_0304`, `EN_0312`, `EN_0356`.
+
+Fix: se separó en un secret nuevo, `TL_UNIT_IDS_IDLE`, con solo las 22
+unidades correctas, y se agregó un filtro local en `download-weekly-idle.js`
+como red de seguridad (la API de TrackGTS no garantiza respetar el filtro de
+`unitIds` para este reportType). Valor a cargar en `TL_UNIT_IDS_IDLE`:
+
+```
+6769,6766,6767,6771,5206,3841,5204,5209,4936,5211,3860,5651,5633,5199,5220,5635,5625,5245,5215,5212,5213,5223
+```
+
+Mapeo (unitId → unidad), para referencia futura:
+
+| unitId | Unidad                          |
+|--------|----------------------------------|
+| 6769   | FORD RANGER VYVC-38 (STGO PR)   |
+| 6766   | FORD RANGER VYVC-47 (ANF)       |
+| 6767   | FORD RANGER VYVC-51 (ANF)       |
+| 6771   | FORD RANGER VYVC-65 (ANF)       |
+| 5206   | MAXUS SPRV-87 (STGO)            |
+| 3841   | MAXUS SRYB-26 (ANTOFA)          |
+| 5204   | MAXUS SSRZ-79 (VENTAS Copiapo)  |
+| 5209   | MAXUS TFWK-88 (STGO)            |
+| 4936   | MAXUS TVVB-25 (CHILLAN)         |
+| 5211   | MAXUS TVVB-26 (STGO)            |
+| 3860   | MAXUS TYTC-88 (ANTOFA)          |
+| 5651   | MAXUS VGVV-79 (STGO MA)         |
+| 5633   | MAXUS VGVV-89 (STGO)            |
+| 5199   | MITSUBISHI SRBG-21 (Ceniza)     |
+| 5220   | MITSUBISHI VDYY-73 (Chillan)    |
+| 5635   | MITSUBISHI VDYY-82 (ANTOFA)     |
+| 5625   | MITSUBISHI VDYY-88 (Ventas)     |
+| 5245   | MITSUBISHI VDYZ-59 (Copiapo)    |
+| 5215   | NISSAN KBVJ-69 (STGO)           |
+| 5212   | NISSAN RZSX-46 (STGO)           |
+| 5213   | PEUGEOT SRTR-81 (STGO)          |
+| 5223   | PEUGEOT SVCH-53 (STGO)          |
+
+Pendiente de verificar tras el fix: incluso dentro de estas 22 unidades,
+algunos conteos/duraciones de eventos no calzaban exactamente con el Excel
+del favorito de TrackGTS (ej. SRYB-26: 23 eventos/10h11m vía API vs 19
+eventos/5h44m en el favorito) — no explicado por unidades de más, podría ser
+diferencia de ventana horaria o de-duplicación entre el endpoint crudo y el
+reporte favorito. Comparar de nuevo con un Excel fresco del favorito una vez
+que corra el próximo lunes con el secret corregido.
 
 ## Destinatarios finales (confirmar antes de activar envío real)
 
