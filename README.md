@@ -24,9 +24,17 @@ y lo envía por email a las 07:00 CLT.
 - [x] Estructura del "Reporte Relentí" identificada y automatizada (hojas Detalle / Resumen Diario / Resumen Total)
 - [x] Pipeline probado end-to-end: corrida exitosa 2026-08-01, 2 excesos + 60 eventos de ralentí detectados para el período 20-26/07
 - [x] Dashboard (`index.html`) publicado en GitHub Pages: https://wurfelspa.github.io/tracklink-enerfrost/
-- [ ] Ajustar filtro por defecto del dashboard ("Últimos 7 días" se calcula contra hoy, no contra el período real del reporte — puede mostrar "sin datos" con datos reales fuera de esa ventana)
+- [x] Filtro por defecto del dashboard = "Últimos 7 días" contra la fecha real de hoy (con fallback a rango completo solo si no hay eventos, para no mostrar pantalla vacía) — verificado 2026-08-07
+- [x] Pestaña "Reportes" en el dashboard con enlaces de descarga a Reporte (Excel) e Informe Ejecutivo (PDF), para Excesos de Velocidad y Ralentí Excesivo — agregada 2026-08-07
 - [ ] Limpiar encoding (mojibake) en columnas Dirección/Posición del tab "Detalle de Eventos"
 - [ ] **Activar envío real en n8n — lo hace Alex personalmente, NO automatizar**
+
+## Nomenclatura de documentos (vigente desde 2026-08-07)
+
+- **Reporte**: archivo Excel generado desde la plataforma, con el detalle y
+  los datos base de los eventos.
+- **Informe Ejecutivo**: documento PDF elaborado a partir del Reporte, con
+  indicadores, análisis, gráficos, conclusiones y recomendaciones.
 
 ## Mapeo de unidades (HealthCheck_171, 2026-08-01)
 
