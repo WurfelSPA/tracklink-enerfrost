@@ -448,7 +448,7 @@ function generateHTML(s) {
   </div>
   <div class="cv-right">
     <div class="cv-eyebrow">${eyebrow}</div>
-    <h1 class="cv-title">Informe de Ralentí Excesivo</h1>
+    <h1 class="cv-title">Informe Ejecutivo — Ralentí Excesivo</h1>
     <p class="cv-sub">${CONFIG.siteName} · Período: ${s.rangeVerbose}</p>
     <p class="cv-desc">Durante la semana analizada se registraron <strong>${s.totalEventos} eventos de ralentí</strong>, acumulando un total de <strong>${fmtHoras(s.totalMin)}</strong> de motor encendido sin desplazamiento. Este reporte identifica las unidades con mayor tiempo de ralentí, con el objetivo de apoyar la eficiencia operacional y el ahorro de combustible.</p>
   </div>
