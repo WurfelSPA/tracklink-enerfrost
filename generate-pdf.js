@@ -40,6 +40,11 @@ const CONFIG = {
   footerLabel:    'ENERFROST',
   logoUrl:        'https://raw.githubusercontent.com/WurfelSPA/tracklink-enerfrost/main/logo-enerfrost.png',
   speedThreshold: 120,  // km/h — filas por debajo se descartan (ver nota arriba)
+  speedMaxPlausible: 200, // km/h — red de seguridad: por encima es GPS/sensor fallado,
+                          // no un exceso real (confirmado 2026-08-08: EN_0364 (Lux)
+                          // acumuló decenas de lecturas de 177-374 km/h que TrackGTS
+                          // ya no reporta para esas fechas — se descartan aquí para
+                          // que no vuelvan a inflar el conteo semanal)
   colorDark:      '#0e2f2a', // teal muy oscuro — portada, KPI, badges (derivado del logo)
   colorDarker:    '#071a17', // casi negro con matiz teal — degradé de portada
   colorMid:       '#12554a', // teal medio-oscuro — degradé de portada
@@ -156,6 +161,7 @@ function parseAndFilter(buffer, startDate, endDate) {
 
     const vel = parseFloat(String(obj[columns.velocidad] || '0').replace(',', '.')) || 0;
     if (vel < CONFIG.speedThreshold) continue; // red de seguridad: respeta el umbral pactado
+    if (vel > CONFIG.speedMaxPlausible) continue; // red de seguridad: GPS/sensor fallado, no exceso real
 
     const aliasVal     = String(obj[columns.alias] || '').trim();
     const conductorRaw = columns.conductor ? String(obj[columns.conductor] || '').trim() : '';
