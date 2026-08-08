@@ -19,7 +19,10 @@
  *     todo lo que el sistema marca como "exceso" según su propio default —
  *     este filtro es la red de seguridad para que el informe respete el
  *     umbral pactado con el cliente)
- *   - Sin lista de unidades excluidas (a diferencia de KADEL)
+ *   - CONFIG.excludeAliasPrefix = 'EN_' → excluye equipos/activos sin patente
+ *     (alias "EN_XXXX", confirmado 2026-08-08 a pedido de Rafael: no son
+ *     vehículos reales, y el caso EN_0364 mostró que sus lecturas de
+ *     velocidad no son confiables — GPS/sensor fallado)
  *
  * Variables de entorno esperadas:
  *   REPORT_START — "YYYY-MM-DD"
@@ -45,6 +48,9 @@ const CONFIG = {
                           // acumuló decenas de lecturas de 177-374 km/h que TrackGTS
                           // ya no reporta para esas fechas — se descartan aquí para
                           // que no vuelvan a inflar el conteo semanal)
+  excludeAliasPrefix: 'EN_', // alias que empiezan así son equipos/activos sin
+                          // patente (ej. EN_0364, EN_0378) — no son vehículos,
+                          // se excluyen del informe de excesos de velocidad
   colorDark:      '#0e2f2a', // teal muy oscuro — portada, KPI, badges (derivado del logo)
   colorDarker:    '#071a17', // casi negro con matiz teal — degradé de portada
   colorMid:       '#12554a', // teal medio-oscuro — degradé de portada
@@ -164,6 +170,7 @@ function parseAndFilter(buffer, startDate, endDate) {
     if (vel > CONFIG.speedMaxPlausible) continue; // red de seguridad: GPS/sensor fallado, no exceso real
 
     const aliasVal     = String(obj[columns.alias] || '').trim();
+    if (CONFIG.excludeAliasPrefix && aliasVal.startsWith(CONFIG.excludeAliasPrefix)) continue; // equipo sin patente, no vehículo
     const conductorRaw = columns.conductor ? String(obj[columns.conductor] || '').trim() : '';
 
     obj['__fecha']     = fecha;
