@@ -52,6 +52,23 @@ su propio default. `generate-pdf.js` aplica un filtro adicional
 (`CONFIG.speedThreshold = 120`) como red de seguridad para respetar el
 umbral pactado con el cliente.
 
+### ⚠ Incidente 2026-08-08: excesos inflados por unidad sin patente (EN_0364)
+
+El cliente reportó que el informe mostraba 48 excesos cuando la realidad
+(portal TrackGTS) eran solo 2. Causa: la unidad `EN_0364 (Lux)` — un
+equipo/activo sin patente, no un vehículo — acumuló decenas de lecturas de
+velocidad de 177-374 km/h por sensor/GPS fallado. Fix aplicado:
+
+1. Se purgó el historial acumulado (`INFORME EXCESOS DE VELOCIDAD.xlsx`) de
+   las filas de `EN_0364`.
+2. Se agregó `CONFIG.speedMaxPlausible = 200` en `generate-pdf.js` como red
+   de seguridad ante velocidades físicamente imposibles.
+3. A pedido de Rafael (2026-08-08): se agregó `CONFIG.excludeAliasPrefix =
+   'EN_'` para excluir **todas** las unidades con alias `EN_XXXX` del
+   informe de excesos, no solo `EN_0364` — son equipos sin patente y no
+   corresponden a vehículos reales (se detectó también `EN_0378` con
+   lecturas de 133,5 km/h en el mismo historial).
+
 ## Segundo informe pendiente: Ralentí Excesivo
 
 El mail de Track Link pide también un informe de **ralentí excesivo** para
