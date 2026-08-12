@@ -7,10 +7,8 @@
  *
  * DISEÑO: paleta derivada del logo real de ENERFROST (logo Enerfrost.png,
  * teal #17B899 + gris carbón #54565A) — reemplaza el placeholder inicial.
- * El layout de tabla con columna "Conductor" sigue siendo el heredado de
- * Santa Marta (el Excel de ENERFROST sí trae esa columna, a diferencia de
- * KADEL) — validar con el cliente antes de producción si el contenido
- * textual/estructura también les sirve, o solo la paleta.
+ * El Excel de ENERFROST sí trae columna "Conductor", pero se ignora a
+ * propósito (ver CONFIG.groupByAlias abajo).
  *
  * Diferencias vs. el original de Santa Marta:
  *   - CONFIG.siteName / CONFIG.footerLabel → "ENERFROST"
@@ -23,6 +21,10 @@
  *     (alias "EN_XXXX", confirmado 2026-08-08 a pedido de Rafael: no son
  *     vehículos reales, y el caso EN_0364 mostró que sus lecturas de
  *     velocidad no son confiables — GPS/sensor fallado)
+ *   - CONFIG.groupByAlias = true → ENERFROST no tiene activo el sistema de
+ *     registro de conductor en TrackGTS (confirmado 2026-08-12, mismo criterio
+ *     aplicado a KADEL): aunque el Excel trae columna "Conductor", se ignora
+ *     y se agrupa/etiqueta siempre por Alias completo.
  *
  * Variables de entorno esperadas:
  *   REPORT_START — "YYYY-MM-DD"
@@ -51,6 +53,9 @@ const CONFIG = {
   excludeAliasPrefix: 'EN_', // alias que empiezan así son equipos/activos sin
                           // patente (ej. EN_0364, EN_0378) — no son vehículos,
                           // se excluyen del informe de excesos de velocidad
+  groupByAlias:   true,   // ENERFROST no tiene activo el registro de
+                          // conductor (2026-08-12) — ignora la columna
+                          // "Conductor" del Excel aunque venga poblada
   colorDark:      '#0e2f2a', // teal muy oscuro — portada, KPI, badges (derivado del logo)
   colorDarker:    '#071a17', // casi negro con matiz teal — degradé de portada
   colorMid:       '#12554a', // teal medio-oscuro — degradé de portada
@@ -142,7 +147,7 @@ function parseAndFilter(buffer, startDate, endDate) {
 
   const columns = {
     alias:     headers[aliasIdx]     || 'Alias',
-    conductor: conductorIdx >= 0 ? headers[conductorIdx] : null,
+    conductor: (!CONFIG.groupByAlias && conductorIdx >= 0) ? headers[conductorIdx] : null,
     fecha:     headers[fechaIdx]     || 'Fecha de Inicio',
     velocidad: headers[velIdx],
   };
@@ -202,8 +207,15 @@ function parseFecha(val) {
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function splitAlias(alias) {
+  // El código de unidad (ej. "TVVB-25") es el segmento con guión — no
+  // necesariamente el último token, ya que muchos alias de ENERFROST
+  // terminan en "(SITIO)" (ej. "MAXUS TVVB-25 (CHILLAN)"), lo que hacía que
+  // la versión anterior (siempre el último token) devolviera "(CHILLAN)"
+  // como código en vez de "TVVB-25" — corregido 2026-08-12.
   const parts = String(alias || '').trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return { model: '', code: '' };
+  const codeIdx = parts.findIndex((p) => /-/.test(p));
+  if (codeIdx >= 0) return { model: parts.slice(0, codeIdx).join(' '), code: parts[codeIdx] };
   const code  = parts[parts.length - 1];
   const model = parts.slice(0, -1).join(' ');
   return { model, code };
@@ -292,7 +304,9 @@ function computeStats(rows, columns, startDate, endDate) {
       return {
         rawName: name,
         name: label,
-        nameAbbr: data.vehicleOnly ? (code || name) : abbreviateName(name),
+        // nameAbbr alimenta la tabla — cuando se agrupa por alias mostramos
+        // el alias completo (pedido 2026-08-12), no solo el código corto.
+        nameAbbr: data.vehicleOnly ? name : abbreviateName(name),
         nameUpper: data.vehicleOnly ? (code || String(name).toUpperCase()) : String(name).toUpperCase(),
         unitCode: code,
         unitModel: model,
@@ -498,13 +512,12 @@ function generateHTML(s) {
   const footer = `<div class="tl-footer">Tracklink Chile Fleet Dashboard · ${CONFIG.footerLabel} · ${s.startDisplay} — ${s.endDisplay}</div>`;
 
   const conductorChartItems = s.conductoresArr.map((c) => ({ label: c.nameUpper, value: c.count }));
-  const conductorChartSvg   = horizontalBarChart(conductorChartItems, { width: 620, height: 400, xAxisLabel: 'Cantidad de Excesos', yAxisLabel: 'Conductor', idPrefix: 'chartCond' });
+  const conductorChartSvg   = horizontalBarChart(conductorChartItems, { width: 620, height: 400, xAxisLabel: 'Cantidad de Excesos', yAxisLabel: 'Unidad', idPrefix: 'chartCond' });
 
   const tableRows = s.conductoresArr.map((c) => {
     const isMax = c.rawName && s.globalMaxConductor !== '—' && c.name === s.globalMaxConductor;
     return `<tr class="${isMax ? 'row-max' : ''}">
       <td>${escapeHtml(c.nameAbbr)}</td>
-      <td>${escapeHtml(c.unitCode || '—')}</td>
       <td class="num">${fmtSpeed(c.maxSpeed)} km/h</td>
     </tr>`;
   }).join('');
@@ -623,7 +636,7 @@ function generateHTML(s) {
     <div class="cv-eyebrow">${eyebrow}</div>
     <h1 class="cv-title">Informe Ejecutivo — Excesos de Velocidad</h1>
     <p class="cv-sub">${SITE_NAME} · Período: ${s.rangeVerbose}</p>
-    <p class="cv-desc">Durante la semana analizada se registraron un total de <strong>${s.totalIncidencias} excesos de velocidad</strong> (umbral ${CONFIG.speedThreshold} km/h) en la flota vehicular de ${SITE_NAME}. Este reporte presenta un análisis detallado por conductor, franja horaria y día de la semana, con el objetivo de identificar patrones de riesgo y apoyar la toma de decisiones en materia de seguridad vial operacional.</p>
+    <p class="cv-desc">Durante la semana analizada se registraron un total de <strong>${s.totalIncidencias} excesos de velocidad</strong> (umbral ${CONFIG.speedThreshold} km/h) en la flota vehicular de ${SITE_NAME}. Este reporte presenta un análisis detallado por unidad, franja horaria y día de la semana, con el objetivo de identificar patrones de riesgo y apoyar la toma de decisiones en materia de seguridad vial operacional.</p>
   </div>
 </div>
 
@@ -633,22 +646,22 @@ function generateHTML(s) {
   <p class="pg-intro">Los cuatro indicadores clave del período revelan concentraciones críticas de riesgo que requieren atención inmediata por parte de la supervisión de flota.</p>
   <div class="kpi-grid">
     <div class="kpi"><div class="kpi-val">${s.totalIncidencias}</div><div class="kpi-lbl">Total de Excesos</div><div class="kpi-desc">Incidencias sobre ${CONFIG.speedThreshold} km/h registradas en el período completo</div></div>
-    <div class="kpi"><div class="kpi-val">${fmtPct(s.conductoresArr[0]?.pct || 0)}%</div><div class="kpi-lbl">Conductor Crítico</div><div class="kpi-desc">${s.conductoresArr[0]?.name || '—'} concentra ${s.conductoresArr[0]?.count || 0} excesos del total semanal</div></div>
-    <div class="kpi"><div class="kpi-val">${fmtSpeed(s.globalMaxSpeed)}</div><div class="kpi-lbl">Vel. Máx. (km/h)</div><div class="kpi-desc">Registrada por ${s.globalMaxConductor} en unidad ${s.globalMaxUnit}</div></div>
+    <div class="kpi"><div class="kpi-val">${fmtPct(s.conductoresArr[0]?.pct || 0)}%</div><div class="kpi-lbl">Unidad Crítica</div><div class="kpi-desc">${s.conductoresArr[0]?.name || '—'} concentra ${s.conductoresArr[0]?.count || 0} excesos del total semanal</div></div>
+    <div class="kpi"><div class="kpi-val">${fmtSpeed(s.globalMaxSpeed)}</div><div class="kpi-lbl">Vel. Máx. (km/h)</div><div class="kpi-desc">Registrada por la unidad ${s.globalMaxConductor}</div></div>
     <div class="kpi"><div class="kpi-val">${s.peakHour.count}</div><div class="kpi-lbl">Hora Pico (${pad(s.peakHour.hour)}:00h)</div><div class="kpi-desc">Franja horaria con mayor concentración de incidencias</div></div>
   </div>
   <div class="alert alert-yellow"><span class="icon-warn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3L22 20H2L12 3Z" stroke="#eab308" stroke-width="2" stroke-linejoin="round" fill="#fef9c3"/><path d="M12 10v4M12 17h.01" stroke="#a16207" stroke-width="2" stroke-linecap="round"/></svg></span><div>El ${DIAS_ES_FULL[s.peakDay.date ? s.peakDay.date.getDay() : 0]} ${s.peakDay.label.split(' ')[1] || ''} fue el día más crítico del período, concentrando <strong>${s.peakDay.count} excesos</strong> (${fmtPct(s.totalIncidencias ? s.peakDay.count / s.totalIncidencias * 100 : 0)}% del total semanal).</div></div>
   <div class="pf">${footer}</div>
 </div></div>
 
-<!-- PÁGINA 3 — CONDUCTORES -->
+<!-- PÁGINA 3 — UNIDADES -->
 <div class="page"><div class="pi">
-  <h2 class="pg-title">Excesos por Conductor y Velocidad Máxima</h2>
-  <p class="pg-intro">La distribución de incidencias es marcadamente desigual: los tres conductores con mayor cantidad de excesos acumulan el <strong>${fmtPct(s.top3Pct)}% del total</strong>, lo que indica la necesidad de intervención focalizada. ${top3Text ? `${top3Names[0] || ''} lidera con ${s.conductoresArr[0]?.count || 0} excesos${top3Names[1] ? `, seguido por ${top3Names[1]} (${s.conductoresArr[1]?.count || 0})` : ''}${top3Names[2] ? ` y ${top3Names[2]} (${s.conductoresArr[2]?.count || 0})` : ''}.` : ''}</p>
+  <h2 class="pg-title">Excesos por Unidad y Velocidad Máxima</h2>
+  <p class="pg-intro">La distribución de incidencias es marcadamente desigual: las tres unidades con mayor cantidad de excesos acumulan el <strong>${fmtPct(s.top3Pct)}% del total</strong>, lo que indica la necesidad de intervención focalizada. ${top3Text ? `${top3Names[0] || ''} lidera con ${s.conductoresArr[0]?.count || 0} excesos${top3Names[1] ? `, seguido por ${top3Names[1]} (${s.conductoresArr[1]?.count || 0})` : ''}${top3Names[2] ? ` y ${top3Names[2]} (${s.conductoresArr[2]?.count || 0})` : ''}.` : ''}</p>
   <div class="p3-row">
     <div class="p3-chart">${conductorChartSvg}</div>
     <div class="p3-table-wrap">
-      <div class="cond-table-scroll"><table class="cond-table"><thead><tr><th>Conductor</th><th>Unidad</th><th>Vel. Máx.</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+      <div class="cond-table-scroll"><table class="cond-table"><thead><tr><th>Unidad</th><th>Vel. Máx.</th></tr></thead><tbody>${tableRows}</tbody></table></div>
       <p class="p3-note">${s.globalMaxConductor} registró la velocidad puntual más alta del período (${fmtSpeed(s.globalMaxSpeed)} km/h), ${s.globalMaxRank > 0 ? `${s.globalMaxRank <= 3 ? 'ubicándose' : 'a pesar de ubicarse'} en el ${ordinal(s.globalMaxRank)} lugar por volumen de excesos.` : ''}</p>
     </div>
   </div>
@@ -674,9 +687,9 @@ function generateHTML(s) {
     </div>
     <div class="p5-actions-col">
       <div class="concl-grid">
-        <div class="concl-card"><h4>Capacitación Focalizada</h4><p>Priorizar a ${top3Text} en programas de conducción segura y manejo defensivo.</p></div>
+        <div class="concl-card"><h4>Capacitación Focalizada</h4><p>Priorizar a las unidades ${top3Text} en programas de conducción segura y manejo defensivo.</p></div>
         <div class="concl-card"><h4>Control en Horario Crítico</h4><p>Reforzar la supervisión entre las ${coreLabel}, especialmente los días ${criticalDayText}.</p></div>
-        <div class="concl-card"><h4>Revisión de Unidad ${s.globalMaxUnit}</h4><p>Verificar el estado mecánico ${s.globalMaxModel ? `del ${titleCase(s.globalMaxModel)}` : 'de la unidad'} de ${s.globalMaxConductor.split(' ').pop()}, dado el registro de velocidad máxima de ${fmtSpeed(s.globalMaxSpeed)} km/h.</p></div>
+        <div class="concl-card"><h4>Revisión de Unidad ${s.globalMaxUnit}</h4><p>Verificar el estado mecánico ${s.globalMaxModel ? `del ${titleCase(s.globalMaxModel)}` : 'de la unidad'}, dado el registro de velocidad máxima de ${fmtSpeed(s.globalMaxSpeed)} km/h.</p></div>
         <div class="concl-card"><h4>Seguimiento Continuo</h4><p>Establecer alertas automáticas para conductores que superen umbrales de excesos semanales definidos por la supervisión.</p></div>
       </div>
     </div>
